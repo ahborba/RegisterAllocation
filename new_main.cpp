@@ -5,7 +5,7 @@
 
 using namespace std;
 class Node{
-public:
+    public:
     int id;
     map<int, bool> edges;
     int color;
@@ -39,6 +39,15 @@ public:
             }
         }
     }
+    bool is_available(int color){
+        map<int, bool>::iterator it;
+        for (it = edges.begin(); it != edges.end(); it++){
+            if(it->first==color){
+                return false;
+            }
+        }
+        return true;
+    }
     void restart_edges(){
         qtd_edges=bck_qtd_edges;
         map<int, bool>::iterator it;
@@ -46,7 +55,6 @@ public:
             edges[it->first] = true;
         }
     }
-
     void remover(){
         ativo = false;
     }
@@ -128,6 +136,7 @@ int lowest(int k, int j, Node nodes[]){
 
 int highest(int nd_size, Node nodes[]){
     int highest = -1, i = 0, index = 0;
+    int node_v;
     for (i = 0; i < nd_size; i++){
         Node nd = nodes[i];
         if (!nd.ativo)
@@ -136,6 +145,13 @@ int highest(int nd_size, Node nodes[]){
         if (nd_edges > highest){
             highest = nd_edges;
             index = i;
+            node_v = nd.id;
+        }else if(nd_edges == highest){
+            if(nd.id < node_v){
+                index = i;
+                node_v = nd.id;
+            }
+
         }
     }
     return index;
@@ -153,7 +169,8 @@ void remove_edge(Node nodes[], int index, int nd_size){
     }
 }
 
-bool simplify(int k, Node nodes[], int nodes_size){
+list<Node> simplify(int k, Node nodes[], int nodes_size){
+    list<Node> stack;
     int n = nodes_size, i = 0;
     while (n > 0){
         int index = lowest(k, nodes_size, nodes);
@@ -164,12 +181,13 @@ bool simplify(int k, Node nodes[], int nodes_size){
         }else{
             cout << "Push: " << nodes[index].id << endl;
         }
+        stack.push_back(nodes[index]);
         remove_edge(nodes, nodes[index].id, nodes_size);
         nodes[index].ativo = false;
         n--;
     }
 
-    return true;
+    return stack;
 }
 
 void restart(int nd_size,Node nodes[]){
@@ -177,6 +195,7 @@ void restart(int nd_size,Node nodes[]){
     for( i = 0 ; i < nd_size ; i++ ){
         Node nd = nodes[i];
         nd.ativo = true;
+        nd.color=-1;
         nd.restart_edges();
         nodes[i] = nd;
     }
@@ -200,6 +219,79 @@ void debug(int nd_size,Node nodes[]){
         
     }
 }
+Node get_node_by_id(int size , int id,Node nodes[]){
+    int i = 0; 
+    for (i = 0 ; i < size ; i++){
+        Node nd = nodes[i];
+        if(id==nd.id){
+            return nd;
+        }
+    }
+    return Node(-1);
+}
+void set_node_by_id(Node nd, int size, Node nodes[]){
+    int i = 0; 
+    for (i = 0 ; i < size ; i++){
+        Node n = nodes[i];
+        if(n.id==nd.id){
+            nodes[i]=nd;
+            return;
+        }
+    }
+}
+
+
+
+int verify_available_color(int k ,Node nd, Node nodes[],int size){
+    int i = 0 ;
+
+    while(i<k){
+        // a cor não está presente diretamente em nenhuma aresta
+        if(nd.is_available(i)){
+            bool is_available = true;
+            map<int,bool>::iterator it;
+            //verifica se alguma aresta esta utilizando esta cor
+            for( it = nd.edges.begin() ; it != nd.edges.end(); it++){
+                int id = it->first;
+                Node nd_edge = get_node_by_id(size,id,nodes);
+                if(nd_edge.color == i){
+                    is_available = false;
+                }
+
+            }
+            if(is_available){
+                return i;
+            }
+            
+        }
+        i++;
+    }
+    return -1;
+}
+
+
+
+
+bool select(int k ,list<Node> stack,Node nodes[]){
+    int i = 0 , size = stack.size();
+
+    for( i = 0 ; i < size ; i++){
+        Node nd = stack.back();
+        int color = verify_available_color(k,nd,nodes,size);
+        if(color>=0){
+            cout<<"Pop: "<<nd.id<<" -> "<<color<<endl;
+            nd.color=color;
+            set_node_by_id(nd,size,nodes);
+        }else{
+            cout<<"Pop: "<<nd.id<<" -> NO COLOR AVAILABLE"<<endl;
+            return false;
+        }
+
+
+        stack.pop_back();
+    }
+    return true;
+}
 
 int main(){
     string line, graph;
@@ -221,18 +313,69 @@ int main(){
 
     i = k;
     while (i >= 2){
-        debug(lines.size(),nodes);
+        // debug(lines.size(),nodes);
         cout << "K = " << i << endl<< endl;
-        bool st = simplify(i, nodes, lines.size());
-        if(st==1){
-            cout<<"k: "<<i<<"->"<<"true"<<endl;
-        }else{
-            cout<<"k: "<<i<<"->"<<"false"<<endl;
-        }
+        list<Node> stack = simplify(i, nodes, lines.size());
+        status[i] = select(i,stack,nodes);
+
         restart(lines.size(),nodes);
         i--;
         cout<<"----------------------------------------"<<endl;
     }
+    cout<<"----------------------------------------"<<endl;
+    for( i = k ; i >=2 ; i--){
+        bool space = false;
+        if(i<10)
+            space = true;
+        
+        if(i>2){
+            if(status[i]){
+                if(space){
+                    cout<<"Graph"<<graph<<" -> K =  "<<i<<": Successful Allocation"<<endl;
+                }else{
+                    cout<<"Graph"<<graph<<" -> K = "<<i<<": Successful Allocation"<<endl;
+                }
+            }
+            else{
+                if(space){
+                    cout<<"Graph"<<graph<<" -> K =  "<<i<<": SPILL"<<endl;
+                }else{
+                    cout<<"Graph"<<graph<<" -> K = "<<i<<": SPILL"<<endl;
+                }
+            }
+        }else{
+            if(status[i])
+                cout<<"Graph"<<graph<<" -> K =  "<<i<<": Sucessful Allocation";
+            else
+                cout<<"Graph"<<graph<<" -> K =  "<<i<<": SPILL";
+        }
+        
+
+    }
 
     return 0;
 }
+
+
+/*
+Graph 1 -> K = 21: Successful Allocation
+Graph 1 -> K = 20: Successful Allocation
+Graph 1 -> K = 19: Successful Allocation
+Graph 1 -> K = 18: Successful Allocation
+Graph 1 -> K = 17: Successful Allocation
+Graph 1 -> K = 16: Successful Allocation
+Graph 1 -> K = 15: Successful Allocation
+Graph 1 -> K = 14: Successful Allocation
+Graph 1 -> K = 13: Successful Allocation
+Graph 1 -> K = 12: Successful Allocation
+Graph 1 -> K = 11: Successful Allocation
+Graph 1 -> K = 10: Successful Allocation
+Graph 1 -> K =  9: Successful Allocation
+Graph 1 -> K =  8: Successful Allocation
+Graph 1 -> K =  7: Successful Allocation
+Graph 1 -> K =  6: Successful Allocation
+Graph 1 -> K =  5: SPILL
+Graph 1 -> K =  4: SPILL
+Graph 1 -> K =  3: SPILL
+Graph 1 -> K =  2: SPILL
+*/

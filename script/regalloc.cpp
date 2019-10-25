@@ -309,7 +309,6 @@ int main(){
     bool status[k - 2];
     Node nodes[lines.size()];
     build(nodes, lines);
-    Node backup[lines.size()];
 
     i = k;
     while (i >= 2){
